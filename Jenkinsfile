@@ -28,15 +28,29 @@ pipeline {
             }
         }
 
-        stage('Build & Test') {
+        stage('Clean Build') {
             steps {
-                sh 'gradle clean test'
+                sh 'cd app && gradle clean build'
+            }
+        }
+
+        stage('Clean Test') {
+            steps {
+                sh 'cd app && gradle clean test'
             }
         }
 
         stage('Archive Artifact') {
             steps {
                 archiveArtifacts artifacts: 'app/build/libs/*.jar', fingerprint: true
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('MySonarQubeServer') {
+                    sh 'cd app && gradle sonarqube'
+                }
             }
         }
     }
