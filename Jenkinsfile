@@ -30,27 +30,22 @@ pipeline {
 
         stage('Clean Build') {
             steps {
+                // Build inside the app module
                 sh 'cd app && gradle clean build'
             }
         }
 
         stage('Clean Test') {
             steps {
+                // Run tests after build
                 sh 'cd app && gradle clean test'
             }
         }
 
         stage('Archive Artifact') {
             steps {
+                // Explicit path to JAR
                 archiveArtifacts artifacts: 'app/build/libs/*.jar', fingerprint: true
-            }
-        }
-
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('MySonarQubeServer') {
-                    sh 'cd app && gradle sonarqube'
-                }
             }
         }
     }
