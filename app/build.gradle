@@ -1,0 +1,47 @@
+plugins {
+    id 'application'
+    id 'jacoco'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Logging
+    implementation 'org.apache.logging.log4j:log4j-api:2.20.0'
+    implementation 'org.apache.logging.log4j:log4j-core:2.20.0'
+
+    // Google Guava
+    implementation 'com.google.guava:guava:32.1.2-jre'
+
+    // Testing
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(11)
+    }
+}
+
+application {
+    mainClass = 'com.bits.mvn.App'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    // Trigger report automatically after tests
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = false
+        csv.required = false
+        // Specific path requested: build/reports/jacoco/test/html
+        html.outputLocation = layout.buildDirectory.dir('reports/jacoco/test/html')
+    }
+}
