@@ -5,6 +5,8 @@ pipeline {
         GRADLE_VERSION = "8.7"
         GRADLE_HOME = "${env.WORKSPACE}/gradle-${GRADLE_VERSION}"
         PATH = "${GRADLE_HOME}/bin:${env.PATH}"
+        // Replace with your actual Sonar URL
+        SONAR_URL = "http://your-sonarqube-server:9000" 
     }
 
     stages {
@@ -17,7 +19,6 @@ pipeline {
                         unzip -q gradle.zip
                         rm gradle.zip
                     fi
-                    gradle -v
                 '''
             }
         }
@@ -32,30 +33,35 @@ pipeline {
             steps {
                 sh '''
                     cd app
-                    # Running 'build' automatically runs 'test' and 'jar'
                     gradle clean build
-                    
-                    echo "=== Verifying Build Output ==="
+                    echo "=== Verifying JAR Production ==="
                     ls -lh build/libs/
                 '''
             }
         }
 
-        stage('Archive Artifact') {
-            steps {
-                // Ensure this path matches your repository structure.
-                // If the 'app' folder is at the root, use 'app/build/libs/*.jar'
-                archiveArtifacts artifacts: 'app/build/libs/*.jar', fingerprint: true
-            }
-        }
-       
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('MySonarQubeServer') {
-                    sh 'cd app && gradle sonarqube'
+                /* We use withCredentials instead of withSonarQubeEnv 
+                   to avoid the 'No such DSL' error. 
+                   Create a 'Secret Text' credential in Jenkins with ID 'sonar-token'
+                */
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_AUTH_TOKEN')]) {
+                    sh '''
+                        cd app
+                        gradle sonar \
+                          -Dsonar.host.url=${SONAR_URL} \
+                          -Dsonar.login=${SONAR_AUTH_TOKEN}
+                    '''
                 }
             }
         }
 
+        stage('Archive Artifact') {
+            steps {
+                // This archives the JAR so it appears in the Jenkins UI
+                archiveArtifacts artifacts: 'app/build/libs/*.jar', fingerprint: true
+            }
+        }
     }
 }
