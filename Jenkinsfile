@@ -3,25 +3,23 @@ pipeline {
 
     environment {
         GRADLE_VERSION = "8.7"
-        // Windows uses backslashes; Groovy needs them escaped as \\
-        GRADLE_HOME = "${env.WORKSPACE}\\gradle-${GRADLE_VERSION}"
-        PATH = "${GRADLE_HOME}\\bin;${env.PATH}"
-        // UPDATE THIS with your SonarQube Private IP
+        GRADLE_HOME = "${env.WORKSPACE}/gradle-${GRADLE_VERSION}"
+        PATH = "${GRADLE_HOME}/bin:${env.PATH}"
+        // IMPORTANT: Replace this with your actual SonarQube Private IP
         SONAR_URL = "http://localhost:9000" 
     }
 
     stages {
         stage('Install Gradle') {
             steps {
-                // Use 'bat' for Windows. Using PowerShell to download.
-                bat """
-                    if not exist "%GRADLE_HOME%" (
-                        echo Downloading Gradle...
-                        powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -OutFile gradle.zip"
-                        powershell -Command "Expand-Archive -Path gradle.zip -DestinationPath ."
-                        del gradle.zip
-                    )
-                """
+                sh '''
+                    if [ ! -d "$GRADLE_HOME" ]; then
+                        echo "Downloading Gradle $GRADLE_VERSION..."
+                        curl -s -L https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -o gradle.zip
+                        unzip -q gradle.zip
+                        rm gradle.zip
+                    fi
+                '''
             }
         }
 
@@ -33,22 +31,26 @@ pipeline {
 
         stage('Build & Test') {
             steps {
-                // Windows uses 'bat'
-                bat "cd app && gradle clean build"
+                sh '''
+                    cd app
+                    gradle clean build
+                '''
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_AUTH_TOKEN')]) {
-                    bat """
+                    sh '''
                         cd app
-                        gradle sonar ^
-                          -Dsonar.host.url=${SONAR_URL} ^
-                          -Dsonar.login=%SONAR_AUTH_TOKEN% ^
-                          -Dsonar.gradle.skipCompile=true ^
+                        # -Dsonar.gradle.skipCompile=true prevents the deprecation warning
+                        # --no-configuration-cache prevents the Gradle 8.7 error
+                        gradle sonar \
+                          -Dsonar.host.url=${SONAR_URL} \
+                          -Dsonar.login=${SONAR_AUTH_TOKEN} \
+                          -Dsonar.gradle.skipCompile=true \
                           --no-configuration-cache
-                    """
+                    '''
                 }
             }
         }
