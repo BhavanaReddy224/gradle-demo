@@ -3,63 +3,50 @@ pipeline {
 
     environment {
         GRADLE_VERSION = "8.7"
-        GRADLE_HOME = "${env.WORKSPACE}/gradle-${GRADLE_VERSION}"
-        PATH = "${GRADLE_HOME}/bin:${env.PATH}"
-        // Replace with your actual Sonar URL
-        SONAR_URL = "http://your-sonarqube-server:9000" 
+        // Use Windows paths (Backslashes need escaping in Groovy)
+        GRADLE_HOME = "${env.WORKSPACE}\\gradle-${GRADLE_VERSION}"
+        PATH = "${GRADLE_HOME}\\bin;${env.PATH}"
+        // IMPORTANT: Replace with your SonarQube Private IP from AWS Console
+        SONAR_URL = "http://localhost:9000" 
     }
 
     stages {
         stage('Install Gradle') {
             steps {
-                sh '''
-                    if [ ! -d "$GRADLE_HOME" ]; then
-                        echo "Downloading Gradle $GRADLE_VERSION..."
-                        curl -s -L https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -o gradle.zip
-                        unzip -q gradle.zip
-                        rm gradle.zip
-                    fi
-                '''
-            }
-        }
-
-        stage('Checkout') {
-            steps {
-                checkout scm
+                // Using 'bat' for Windows
+                bat """
+                    if not exist "%GRADLE_HOME%" (
+                        powershell -Command "Invoke-WebRequest -Uri https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -OutFile gradle.zip"
+                        powershell -Command "Expand-Archive -Path gradle.zip -DestinationPath ."
+                        del gradle.zip
+                    )
+                """
             }
         }
 
         stage('Build & Test') {
             steps {
-                sh '''
-                    cd app
-                    gradle clean build
-                    echo "=== Verifying JAR Production ==="
-                    ls -lh build/libs/
-                '''
+                bat "cd app && gradle clean build"
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                /* We use withCredentials instead of withSonarQubeEnv 
-                   to avoid the 'No such DSL' error. 
-                   Create a 'Secret Text' credential in Jenkins with ID 'sonar-token'
-                */
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_AUTH_TOKEN')]) {
-                    sh '''
+                    bat """
                         cd app
-                        gradle sonar \
-                          -Dsonar.host.url=${SONAR_URL} \
-                          -Dsonar.login=${SONAR_AUTH_TOKEN}
-                    '''
+                        gradle sonar ^
+                          -Dsonar.host.url=${SONAR_URL} ^
+                          -Dsonar.login=%SONAR_AUTH_TOKEN% ^
+                          -Dsonar.gradle.skipCompile=true ^
+                          --no-configuration-cache
+                    """
                 }
             }
         }
 
         stage('Archive Artifact') {
             steps {
-                // This archives the JAR so it appears in the Jenkins UI
                 archiveArtifacts artifacts: 'app/build/libs/*.jar', fingerprint: true
             }
         }
