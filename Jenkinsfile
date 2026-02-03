@@ -30,15 +30,14 @@ pipeline {
 
         stage('Clean Build') {
             steps {
-                // Build inside the app module
-                sh 'cd app && gradle clean build'
+                sh 'gradle clean build'
             }
         }
 
         stage('Clean Test') {
             steps {
                 // Run tests after build
-                sh 'cd app && gradle clean test'
+                sh 'gradle clean test'
             }
         }
 
