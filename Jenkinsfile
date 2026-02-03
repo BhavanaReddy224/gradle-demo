@@ -3,20 +3,21 @@ pipeline {
 
     environment {
         GRADLE_VERSION = "8.7"
-        // Use Windows paths (Backslashes need escaping in Groovy)
+        // Windows uses backslashes; Groovy needs them escaped as \\
         GRADLE_HOME = "${env.WORKSPACE}\\gradle-${GRADLE_VERSION}"
         PATH = "${GRADLE_HOME}\\bin;${env.PATH}"
-        // IMPORTANT: Replace with your SonarQube Private IP from AWS Console
+        // UPDATE THIS with your SonarQube Private IP
         SONAR_URL = "http://localhost:9000" 
     }
 
     stages {
         stage('Install Gradle') {
             steps {
-                // Using 'bat' for Windows
+                // Use 'bat' for Windows. Using PowerShell to download.
                 bat """
                     if not exist "%GRADLE_HOME%" (
-                        powershell -Command "Invoke-WebRequest -Uri https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -OutFile gradle.zip"
+                        echo Downloading Gradle...
+                        powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -OutFile gradle.zip"
                         powershell -Command "Expand-Archive -Path gradle.zip -DestinationPath ."
                         del gradle.zip
                     )
@@ -24,8 +25,15 @@ pipeline {
             }
         }
 
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
         stage('Build & Test') {
             steps {
+                // Windows uses 'bat'
                 bat "cd app && gradle clean build"
             }
         }
