@@ -30,20 +30,24 @@ pipeline {
 
         stage('Clean Build') {
             steps {
-                sh 'gradle clean build'
+                sh '''
+                    cd app
+                    gradle clean build
+                    echo "=== Listing JARs produced ==="
+                    ls -lh build/libs/*.jar || echo "No JAR found!"
+                '''
             }
         }
 
         stage('Clean Test') {
             steps {
-                // Run tests after build
-                sh 'gradle clean test'
+                sh 'cd app && gradle clean test'
             }
         }
 
         stage('Archive Artifact') {
             steps {
-                // Explicit path to JAR
+                // Archive whatever JAR was logged in Clean Build
                 archiveArtifacts artifacts: 'app/build/libs/*.jar', fingerprint: true
             }
         }
