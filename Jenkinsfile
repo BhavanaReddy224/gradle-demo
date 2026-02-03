@@ -48,7 +48,7 @@ pipeline {
         stage('Archive Artifact') {
             steps {
                 // Archive whatever JAR was logged in Clean Build
-                archiveArtifacts artifacts: 'app/build/libs/*.jar', fingerprint: true
+                archiveArtifacts artifacts: 'build/libs/*.jar', fingerprint: true
             }
         }
     }
