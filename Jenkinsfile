@@ -48,12 +48,14 @@ pipeline {
                 archiveArtifacts artifacts: 'app/build/libs/*.jar', fingerprint: true
             }
         }
-    }
-    
-    post {
-        always {
-            // Optional: Publish JaCoCo reports if you want to see them in Jenkins
-            echo "Build process completed."
+       
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('MySonarQubeServer') {
+                    sh 'cd app && gradle sonarqube'
+                }
+            }
         }
+
     }
 }
