@@ -14,7 +14,7 @@ pipeline {
                     if [ ! -d "$GRADLE_HOME" ]; then
                         echo "Downloading Gradle $GRADLE_VERSION..."
                         curl -s -L https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -o gradle.zip
-                        unzip gradle.zip
+                        unzip -q gradle.zip
                         rm gradle.zip
                     fi
                     gradle -v
@@ -28,30 +28,32 @@ pipeline {
             }
         }
 
-        stage('Clean Build') {
+        stage('Build & Test') {
             steps {
                 sh '''
                     cd app
+                    # Running 'build' automatically runs 'test' and 'jar'
                     gradle clean build
-                    echo "=== Listing JARs produced ==="
-                    ls -lh build/libs/*.jar || echo "No JAR found!"
+                    
+                    echo "=== Verifying Build Output ==="
+                    ls -lh build/libs/
                 '''
-            }
-        }
-
-        stage('Clean Test') {
-            steps {
-                sh 'cd app && gradle clean test'
-                sh 'pwd'
-                sh 'tree'
             }
         }
 
         stage('Archive Artifact') {
             steps {
-                // Archive whatever JAR was logged in Clean Build
-                archiveArtifacts artifacts: 'gradle-demo/app/build/libs/*.jar', fingerprint: true
+                // Ensure this path matches your repository structure.
+                // If the 'app' folder is at the root, use 'app/build/libs/*.jar'
+                archiveArtifacts artifacts: 'app/build/libs/*.jar', fingerprint: true
             }
+        }
+    }
+    
+    post {
+        always {
+            // Optional: Publish JaCoCo reports if you want to see them in Jenkins
+            echo "Build process completed."
         }
     }
 }
