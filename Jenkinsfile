@@ -42,6 +42,7 @@ pipeline {
         stage('Clean Test') {
             steps {
                 sh 'cd app && gradle clean test'
+                sh 'pwd'
             }
         }
 
