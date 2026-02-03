@@ -43,13 +43,14 @@ pipeline {
             steps {
                 sh 'cd app && gradle clean test'
                 sh 'pwd'
+                sh 'tree'
             }
         }
 
         stage('Archive Artifact') {
             steps {
                 // Archive whatever JAR was logged in Clean Build
-                archiveArtifacts artifacts: 'build/libs/*.jar', fingerprint: true
+                archiveArtifacts artifacts: 'gradle-demo/app/build/libs/*.jar', fingerprint: true
             }
         }
     }
